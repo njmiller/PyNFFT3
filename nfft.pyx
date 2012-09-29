@@ -2,6 +2,9 @@
 sense that the nodes in real space are not evenly spaced. Wrapper is implemented using Cython'''
 
 cimport cnfft
+from cnfft cimport fftw_complex
+
+from libc.string cimport memcpy
 
 import numpy as np
 cimport numpy as np
@@ -14,6 +17,21 @@ ctypedef np.complex_t DTYPEc_t
 
 DTYPEi = np.int
 ctypedef np.int_t DTYPEi_t
+
+cdef enum:
+	SIZEOF_INT = sizeof(int)
+	SIZEOF_FLOAT = sizeof(double)
+	SIZEOF_COMPLEX = sizeof(fftw_complex)
+
+cdef np.ndarray[DTYPEc_t] fftw_complex_to_numpy(fftw_complex *arr_in, int n_elem):
+
+	cdef np.ndarray[DTYPEc_t, ndim=1] arr = np.empty(n_elem,dtype=DTYPEc)
+
+	memcpy(arr.data,arr_in, n_elem*SIZEOF_COMPLEX)
+
+	return arr
+
+#cdef numpy_to_fftw_complex(np.ndarray[DTYPEc_t, ndim=1] arr_in, int n_elem):
 
 cdef class NFFT_2D:
 	cdef cnfft.nfft_plan _c_nfft_plan
@@ -105,13 +123,12 @@ cdef class NFFT_2D:
 	def nfft_trafo(self,f_hat):
 		'''Do the nfft transform from f_hat to f. NOT TESTED'''
 
-		#What type should f be?????
-		#cdef np.ndarray[DTYPE_t, ndim=1] f = np.zeros(self.M_total, dtype=DTYPE)
-		cdef np.ndarray[DTYPEc_t, ndim=1] f = np.zeros(self.M_total, dtype=DTYPE)
+		cdef np.ndarray[DTYPEc_t, ndim=1] f = np.empty(self.M_total, dtype=DTYPE)
 		cdef int i, j, k
 
 		cnfft.nfft_precompute_one_psi(&(self._c_nfft_plan))
-
+		
+		#This is not efficient because of loop. Try to do memcpy
 		for i in range(self.N1):
 			for j in range(self.N2):
 				k = i*self.N2 + j
@@ -120,11 +137,11 @@ cdef class NFFT_2D:
 
 		cnfft.nfft_trafo_2d(&(self._c_nfft_plan))
 
-		#f = self._c_nfft_plan.f
+		#for i in range(self.M_total):
+		#	f[i].real = self._c_nfft_plan.f[i][0]
+		#	f[i].imag = self._c_nfft_plan.f[i][1]
 
-		for i in range(self.M_total):
-			f[i].real = self._c_nfft_plan.f[i][0]
-			f[i].imag = self._c_nfft_plan.f[i][1]
+		f = fftw_complex_to_numpy(self._c_nfft_plan.f,self.M_total)
 
 		return f
 
