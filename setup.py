@@ -1,6 +1,7 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
+import numpy
 
 setup(
 	name = 'NFFT',
@@ -9,6 +10,7 @@ setup(
 	ext_modules = [
 		Extension("nfft", ["nfft.pyx"],
 			libraries=["nfft3","fftw3"])
-		]
+		],
+	include_dirs = [numpy.get_include()]
 )
 

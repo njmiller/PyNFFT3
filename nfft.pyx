@@ -96,29 +96,30 @@ cdef class NFFT_2D:
 		for i in range(self.N1):
 			for j in range(self.N2):
 				k = i*self.N2 + j
-				f_hat[i,j] = self._c_nfft_plan.f_hat[k][0] + self._c_nfft_plan.f_hat[k][1]*1.0j
-
+				#f_hat[i,j] = self._c_nfft_plan.f_hat[k][0] + self._c_nfft_plan.f_hat[k][1]*1.0j
+				f_hat[i,j].real = self._c_nfft_plan.f_hat[k][0]
+				f_hat[i,j].imag = self._c_nfft_plan.f_hat[k][1]
 
 		return f_hat
 
-	def nfft_trafo(self,f_hat):
-		'''Do the nfft transform from f_hat to f. NOT TESTED'''
-
-		cdef np.ndarray[DTYPE_t, ndim=1] f = np.zeros(self.M_total, dtype=DTYPE)
-		cdef int i, j, k
-
-		cnfft.nfft_precompute_one_psi(&(self._c_nfft_plan))
-
-		for i in range(self.N1):
-			for j in range(self.N2)
-				k = i*self.N2 + j
-				self._c_nfft_plan.f_hat[k][0] = f_hat[i,j].real
-				self._c_nfft_plan.f_hat[k][1] = f_hat[i,j].imag
-
-		cnfft.nfft_trafo_2d(&(self._c_nfft_plan))
-
-		f = self._c_nfft_plan.f
-
-		return f
+#	def nfft_trafo(self,f_hat):
+#		'''Do the nfft transform from f_hat to f. NOT TESTED'''
+#
+#		cdef np.ndarray[DTYPE_t, ndim=1] f = np.zeros(self.M_total, dtype=DTYPE)
+#		cdef int i, j, k
+#
+#		cnfft.nfft_precompute_one_psi(&(self._c_nfft_plan))
+#
+#		for i in range(self.N1):
+#			for j in range(self.N2):
+#				k = i*self.N2 + j
+#				self._c_nfft_plan.f_hat[k][0] = f_hat[i,j].real
+#				self._c_nfft_plan.f_hat[k][1] = f_hat[i,j].imag
+#
+#		cnfft.nfft_trafo_2d(&(self._c_nfft_plan))
+#
+#		f = self._c_nfft_plan.f
+#
+#		return f
 
 
