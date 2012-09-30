@@ -45,5 +45,7 @@ cdef extern from "nfft3.h":
 		double complex *f_hat #vector of Fourier coefficients, size is N_total float_types
 		int d #dimension, rank
 		double *sigma #oversampling-factor
+	
+	void nnfft_init(nnfft_plan *ths, int d, int N_total, int M_total, int *N)
 
 	#NFSFT functions

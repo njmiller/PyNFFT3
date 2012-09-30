@@ -24,32 +24,119 @@ cdef enum:
 	SIZEOF_COMPLEX = sizeof(fftw_complex)
 
 cdef np.ndarray[DTYPEc_t] fftw_complex_to_numpy(fftw_complex *arr_in, int n_elem):
+	'''Copying a fftw_complex array to a numpy array'''
 
 	cdef np.ndarray[DTYPEc_t, ndim=1] arr = np.empty(n_elem,dtype=DTYPEc)
 
-	memcpy(arr.data,arr_in, n_elem*SIZEOF_COMPLEX)
+	memcpy(arr.data, arr_in, n_elem*SIZEOF_COMPLEX)
 
 	return arr
 
-#cdef numpy_to_fftw_complex(np.ndarray[DTYPEc_t, ndim=1] arr_in, int n_elem):
+cdef numpy_to_fftw_complex(np.ndarray[DTYPEc_t, ndim=1] arr_in, fftw_complex *arr_out, int n_elem):
+	'''Copying a numpy array into a fftw_complex array. Not returning arrray but modifying input array 
+	because space is probably already allocated.'''
 
-cdef class NFFT_2D:
+	memcpy(arr_out, arr_in.data, n_elem*SIZEOF_COMPLEX)
+	
+cdef class NFFT:
 	cdef cnfft.nfft_plan _c_nfft_plan
-	cdef int N1, N2, N_total, M_total
-	def __cinit__(self,N1=100,N2=100,M=100):
+	cdef int N1, N2, N3, N_total, M_total, d
+	cdef np.ndarray N
+
+	def __cinit__(self):
+		'''Initialize everything to 0'''
+		self.N1 = 0
+		self.N2 = 0
+		self.N3 = 0
+		self.N_total = 0
+		self.M_total = 0
+		self.d = 0
+		self.N = np.empty(1)
+
+	@classmethod
+	def init_1d(cls, int N1, int M):
+	
+		cdef NFFT self
+
+		self = cls()
 
 		#N1 and N2 must be even for a NFFT. Possibly could change to just give an error
 		if np.mod(N1,2) == 1:
-			N1 = N1 + 1
+			N1 += 1
+
+		cnfft.nfft_init_1d(&(self._c_nfft_plan),N1,M)
+		
+		self.N1 = N1
+		self.N_total = N1
+		self.M_total = M
+
+		return self
+
+	@classmethod
+	def init_2d(cls, int N1, int N2, int M):
+
+		cdef NFFT self
+
+		self = cls()
+
+		#N1 and N2 must be even for a NFFT. Possibly could change to just give an error
+		if np.mod(N1,2) == 1:
+			N1 += 1
 
 		if np.mod(N2,2) == 1:
-			N2 = N2 + 1
-
+			N2 += 1
+		
 		cnfft.nfft_init_2d(&(self._c_nfft_plan),N1,N2,M)
-		self.N1 = N1
+		
 		self.N2 = N2
+		self.N1 = N1
 		self.N_total = N1*N2
 		self.M_total = M
+
+		return self
+
+	@classmethod
+	def init_3d(cls,int N1, int N2, int N3, int M):
+		
+		cdef NFFT self
+
+		self = cls()
+
+		#N1 and N2 must be even for a NFFT. Possibly could change to just give an error
+		if np.mod(N1,2) == 1:
+			N1 += 1
+
+		if np.mod(N2,2) == 1:
+			N2 += 1
+		
+		if np.mod(N3,2) == 1:
+			N3 += 1
+		
+		cnfft.nfft_init_3d(&(self._c_nfft_plan),N1,N2,N3,M)
+		
+		self.N3 = N3
+		self.N2 = N2
+		self.N1 = N1
+		self.N_total = N1*N2*N3
+		self.M_total = M
+
+		return self
+
+	@classmethod
+	def init(cls, int d, np.ndarray[DTYPEi_t,ndim=1] N, int M):
+
+		cdef NFFT self
+
+		self = cls()
+
+		cnfft.nfft_init(&(self._c_nfft_plan), d, <int*>(N.data), M)
+	
+		self.N = N
+		self.N_total = np.prod(N)
+		self.M_total = M
+		self.d = d
+
+		return self
 
 	def __dealloc__(self):
 		'''We need to finalize the plan so that allocated memory is freed when this object is destroyed'''
@@ -145,3 +232,16 @@ cdef class NFFT_2D:
 
 		return f
 
+cdef class NNFFT:
+	cdef cnfft.nnfft_plan _c_nnfft_plan
+	cdef int d, N_total, M_total
+	def __cinit__(self,d,np.ndarray[DTYPEi_t] N, M=100):
+
+		self.d = d
+		self.N = N
+		self.M_total = M
+		self.N_total = np.prod(N)
+		
+		cnfft.nnfft_init(&(self._c_nnfft_plan),d,self.N_total,M,<int*>(N.data))
+
+		#cnfft.nnfft_init(&(self._c_nfft_plan),d,N_total,M,N)
