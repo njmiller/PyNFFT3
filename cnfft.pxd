@@ -20,7 +20,9 @@ cdef extern from "nfft3.h":
 	void nfft_init_1d(nfft_plan *ths, int N1, int M)
 	void nfft_init_2d(nfft_plan *ths, int N1, int N2, int M)
 	void nfft_init_3d(nfft_plan *ths, int N1, int N2, int N3, int M)
-
+	void nfft_init_advanced(nfft_plan *ths, int d, int *N, int M, unsigned nfft_flags_on, unsigned nfft_flags_off)
+	void nfft_init_guru(nfft_plan *ths, int d, int *N, int M, int *n, int m, unsigned nfft_flags, unsigned fftw_flags)
+	
 	void nfft_adjoint(nfft_plan *ths)
 	void nfft_adjoint_1d(nfft_plan *ths)
 	void nfft_adjoint_2d(nfft_plan *ths)
@@ -29,6 +31,8 @@ cdef extern from "nfft3.h":
 	void nfft_trafo_1d(nfft_plan *ths)
 	void nfft_trafo_2d(nfft_plan *ths)
 	void nfft_trafo_3d(nfft_plan *ths)
+	void ndft_adjoint(nfft_plan *ths)
+	void ndft_trafo(nfft_plan *ths)
 
 	void nfft_check(nfft_plan *ths)
 	void nfft_finalize(nfft_plan *ths)
@@ -39,13 +43,19 @@ cdef extern from "nfft3.h":
 		double *v #nodes (in fourier domain)
 		int M_total #total number of samples
 		int N_total #total number of Fourier coefficients
-		#fftw_complex *f #vector of samples, size if M_total float_types
-		#fftw_complex *f_hat #vector of Fourier coefficients, size is N_total float_types
-		double complex *f #vector of samples, size if M_total float_types
-		double complex *f_hat #vector of Fourier coefficients, size is N_total float_types
+		fftw_complex *f #vector of samples, size if M_total float_types
+		fftw_complex *f_hat #vector of Fourier coefficients, size is N_total float_types
+		#double complex *f #vector of samples, size if M_total float_types
+		#double complex *f_hat #vector of Fourier coefficients, size is N_total float_types
 		int d #dimension, rank
 		double *sigma #oversampling-factor
 	
 	void nnfft_init(nnfft_plan *ths, int d, int N_total, int M_total, int *N)
+
+	void nnfft_check(nnfft_plan *ths)
+	void nnfft_finalize(nnfft_plan *ths)
+
+	void nnfft_adjoint(nnfft_plan *ths)
+	void nnfft_trafo(nnfft_plan *ths)
 
 	#NFSFT functions
