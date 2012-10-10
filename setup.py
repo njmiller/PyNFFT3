@@ -11,6 +11,6 @@ setup(
 		Extension("pynfft", ["nfft.pyx"],
 			libraries=["nfft3","fftw3"])
 		],
-	include_dirs = [numpy.get_include()]
+	include_dirs = [numpy.get_include(),'/opt/local/include']
 )
 
