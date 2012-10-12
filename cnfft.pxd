@@ -93,6 +93,7 @@ cdef extern from "nfft3.h":
 		#double complex *f_hat #vector of Fourier coefficients, since is N_total float_types
 		int d #dimension, rank
 		int *N #multi bandwidth
+		unsigned nfft_flags #Flags for precomputation, (de)allocation, and FFTW usage
 
 	void nfft_precompute_one_psi(nfft_plan *ths)
 	void nfft_precompute_full_psi(nfft_plan *ths)
@@ -197,9 +198,9 @@ cdef extern from "nfft3.h":
 	void nnfft_trafo(nnfft_plan *ths_plan)
 	void nnfft_adjoint(nnfft_plan *ths_plan)
 	void nnfft_precompute_lin_psi(nnfft_plan *ths_plan)
-	void nnfft_precompute_lin_psi(nnfft_plan *ths_plan)
-	void nnfft_precompute_lin_psi(nnfft_plan *ths_plan)
-	void nnfft_precompute_lin_psi(nnfft_plan *ths_plan)
+	void nnfft_precompute_psi(nnfft_plan *ths_plan)
+	void nnfft_precompute_full_psi(nnfft_plan *ths_plan)
+	void nnfft_precompute_phi_hut(nnfft_plan *ths_plan)
 	void nnfft_finalize(nnfft_plan *ths_plan)
 
 	#NSFFT functions
