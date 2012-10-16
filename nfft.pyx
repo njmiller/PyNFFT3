@@ -131,98 +131,168 @@ cdef numpy_to_real(np.ndarray[DTYPE_t] arr_in, double *arr_out, int n_elem):
 
 cdef class NFFT:
 	cdef cnfft.nfft_plan _c_nfft_plan
-	cdef int d
-	cdef int init_type
-	cdef int fhat_set, f_set, x_set
+	cdef int _init_type
+	cdef int _fhat_set, _f_set, _x_set
 
 	def __init__(self):
 		'''Python initialization'''
 
 	def __cinit__(self):
 		'''C Initialization. Set everything to 0'''
-		self.d = 0
-		self.init_type = 0
-		self.f_set = 0
-		self.fhat_set = 0
-		self.x_set = 0
+		self._init_type = 0
+		self._f_set = 0
+		self._fhat_set = 0
+		self._x_set = 0
 	
 	def __dealloc__(self):
-		'''We need to finalize the plan so that allocated memory is freed when this object is destroyed'''
+		'''Finalize the plan so that allocated memory is freed when this object is destroyed. Calls self.finalize() if needed.'''
 
-		if self.init_type != 0:
+		if self._init_type != 0:
 			self.finalize()
 
 	@classmethod
 	def init_1d(cls, int N1, int M):
+		'''Initialization of a transform plan. Wrapper for d=1
+
+		Parameters
+		----------
+		N1: int
+			number of Fourier coefficients
+
+		M: int
+			number of real space nodes
+
+		Returns
+		-------
+		self: NFFT
+			Intialized NFFT class for 1D transform
+		'''
 	
 		cdef NFFT self
 
 		self = cls()
 
 		if np.mod(N1,2) == 1:
-			raise RuntimeError('N1 must be even')
+			raise ValueError('N1 must be even')
 
 		cnfft.nfft_init_1d(&(self._c_nfft_plan),N1,M)
 		
-		self.d = 1
-		self.init_type = 1
+		self._init_type = 1
 
 		return self
 
 	@classmethod
 	def init_2d(cls, int N1, int N2, int M):
+		'''Initialization of a transform plan. Wrapper for d=2
+
+		Parameters
+		----------
+		N1: int
+			number of Fourier coefficients in the 1st dimension
+
+		N2: int
+			number of Fourier coefficients in the 2nd dimension
+
+		M: int
+			number of real space nodes
+
+		Returns
+		-------
+		self: NFFT
+			Intialized NFFT class for 1D transform
+		'''
 
 		cdef NFFT self
 
 		self = cls()
 
 		if np.mod(N1,2) == 1:
-			raise RuntimeError('N1 must be even')
+			raise ValueError('N1 must be even')
 
 		if np.mod(N2,2) == 1:
-			raise RuntimeError('N2 must be even')
+			raise ValueError('N2 must be even')
 		
 		cnfft.nfft_init_2d(&(self._c_nfft_plan),N1,N2,M)
 	
-		self.d = 2
-		self.init_type = 2
+		self._init_type = 2
 
 		return self
 
 	@classmethod
 	def init_3d(cls,int N1, int N2, int N3, int M):
+		'''Initialization of a transform plan. Wrapper for d=3
+
+		Parameters
+		----------
+		N1: int
+			number of Fourier coefficients in the 1st dimension
+		
+		N2: int
+			number of Fourier coefficients in the 2nd dimension
+		
+		N3: int
+			number of Fourier coefficients in the 3rd dimension
+
+		M: int
+			number of real space nodes
+
+		Returns
+		-------
+		self: NFFT
+			Intialized NFFT class for 2D transform
+		'''
 		
 		cdef NFFT self
 
 		self = cls()
 
 		if np.mod(N1,2) == 1:
-			raise RuntimeError('N1 must be even')
+			raise ValueError('N1 must be even')
 
 		if np.mod(N2,2) == 1:
-			raise RuntimeError('N2 must be even')
+			raise ValueError('N2 must be even')
 		
 		if np.mod(N3,2) == 1:
-			raise RuntimeError('N3 must be even')
+			raise ValueError('N3 must be even')
 		
 		cnfft.nfft_init_3d(&(self._c_nfft_plan),N1,N2,N3,M)
 		
-		self.d = 3
-		self.init_type = 3
+		self._init_type = 3
 
 		return self
 
 	@classmethod
-	def init(cls, int d, np.ndarray[DTYPEi_t,ndim=1] N, int M):
+	def init(cls, int d, np.ndarray N, int M):
+		'''Initialization of a transform plan.
+
+		Parameters
+		----------
+		d: int
+			Number of dimensions for transform
+
+		N: np.ndarray
+			d element array with the number of Fourier coefficients in each dimension
+
+		M: int
+			Number of real space nodes
+		'''
 
 		cdef NFFT self
 
+		if np.size(N) != d:
+			raise ValueError("N should have d elements")
+
+		for N_tmp in N:
+			if np.mod(N_tmp,2) == 1:
+				raise ValueError("Every member of N must be even")
+		
+		cdef np.ndarray[DTYPEi_t,ndim=1] N2 = np.array(N,dtype=DTYPEi)
+
 		self = cls()
 
-		cnfft.nfft_init(&(self._c_nfft_plan), d, <int*>(N.data), M)
+		cnfft.nfft_init(&(self._c_nfft_plan), d, <int*>(N2.data), M)
 	
-		self.d = d
-		self.init_type = 4
+		self._init_type = 4
 
 		return self
 
@@ -235,63 +305,88 @@ cdef class NFFT:
 
 		cnfft.nfft_init_guru(&(self._c_nfft_plan), d, <int*>(N.data), M, <int*>(n.data), m, nfft_flags, fftw_flags)
 
-		self.d = d
-		self.init_type = 5
+		self._init_type = 5
 
 		return self
 
 	property f:
 		def __get__(self):
 			cdef np.ndarray[DTYPEc_t, ndim=1] f_out
-			if self.f_set > 0:
+			if self._f_set > 0:
 				f_out = fftw_complex_to_numpy(self._c_nfft_plan.f,self.M_total)
 				return f_out
 			else:
 				return 0
 
-		def __set__(self,np.ndarray[DTYPEc_t, ndim=1] f_in):
-			#Look at converting f_in to complex if it is not a complex type
-			if self.init_type > 0:
-				numpy_to_fftw_complex(f_in,self._c_nfft_plan.f,self.M_total)
-				self.f_set = 1
+		def __set__(self,np.ndarray f_in):
+			cdef np.ndarray[DTYPEc_t, ndim=1] f_in2
+			if self._init_type > 0:
+				f_in2 = np.array(f_in,dtype=DTYPEc)
+				numpy_to_fftw_complex(f_in2,self._c_nfft_plan.f,self.M_total)
+				self._f_set = 1
 			else:
 				raise RuntimeError("Trying to set f before initializing NFFT plan.")
 	
 	property f_hat:
 		def __get__(self):
 			cdef np.ndarray[DTYPEc_t, ndim=1] fhat_out
-			if self.fhat_set > 0:
+			if self._fhat_set > 0:
 				fhat_out = fftw_complex_to_numpy(self._c_nfft_plan.f_hat,self.N_total)
 				return fhat_out
 			else:
 				return 0
 
-		def __set__(self,np.ndarray[DTYPEc_t, ndim=1] fhat_in):
-			#Look at converting fhat_in to complex if it is not a complex type
-			if self.init_type > 0:
-				numpy_to_fftw_complex(fhat_in,self._c_nfft_plan.f_hat,self.N_total)
-				self.fhat_set = 1
+		def __set__(self,np.ndarray fhat_in):
+			cdef np.ndarray[DTYPEc_t, ndim=1] fhat_in2
+			if self._init_type > 0:
+				fhat_in2 = np.array(fhat_in,dtype=DTYPEc)
+				numpy_to_fftw_complex(fhat_in2,self._c_nfft_plan.f_hat,self.N_total)
+				self._fhat_set = 1
 			else:
 				raise RuntimeError("Trying to set f_hat before initializing NFFT plan.")
 
 	property x:
 		def __get__(self):
-			cdef np.ndarray[DTYPE_t] x_out
-			if self.x_set > 0:
+			cdef np.ndarray x_out
+			if self._x_set > 0:
 				x_out = real_to_numpy(self._c_nfft_plan.x,self.d*self.M_total)
-				x_out=  x_out.reshape((self.M_total,self.d))
+				x_out = x_out.reshape((self.M_total,self.d))
 				return x_out
 			else:
 				return 0
 
-		def __set__(self,np.ndarray[DTYPE_t] x_in):
+		def __set__(self,np.ndarray x_in):
 			'''Set the nodes'''
 
 			#x should be a (npts,ndim) array since it should then be stored in memory in the same linearized order that NFFT wants.
-			if self.init_type > 0:
+			if self._init_type > 0:
+				if np.max(x_in) > 0.5 or np.min(x_in) < -0.5:
+					raise ValueError("x must be in the interval [-0.5,0.5]^2")
 				numpy_to_real(x_in,self._c_nfft_plan.x,self.d*self.M_total) #have M_total samples with d values in each sample
+				self._x_set = 1
 			else:
 				raise RuntimeError("Trying to set the real space nodes before initializing NFFT plan")
+	
+	property N_total:
+		def __get__(self):
+			if self._init_type > 0:
+				return self._c_nfft_plan.N_total
+			else:
+				return 0
+
+	property M_total:
+		def __get__(self):
+			if self._init_type > 0:
+				return self._c_nfft_plan.M_total
+			else:
+				return 0
+
+	property d:
+		def __get__(self):
+			if self._init_type > 0:
+				return self._c_nfft_plan.d
+			else:
+				return 0
 
 	def precompute_one_psi(self):
 		cnfft.nfft_precompute_one_psi(&(self._c_nfft_plan))
@@ -306,59 +401,59 @@ cdef class NFFT:
 		accessed from self.f_hat'''
 		self._check_adjoint()
 		cnfft.nfft_adjoint(&(self._c_nfft_plan))
-		self.fhat_set = 1
+		self._fhat_set = 1
 
 	def adjoint_1d(self):
 		'''Do Adjoint transform. Calling adjoint_1d routine.'''
 		self._check_adjoint()
 		cnfft.nfft_adjoint_1d(&(self._c_nfft_plan))
-		self.fhat_set = 1
+		self._fhat_set = 1
 	
 	def adjoint_2d(self):
 		'''Do Adjoint transform. Calling adjoint_2d routine.'''
 		self._check_adjoint()
 		cnfft.nfft_adjoint_1d(&(self._c_nfft_plan))
-		self.fhat_set = 1
+		self._fhat_set = 1
 	
 	def adjoint_3d(self):
 		'''Do Adjoint transform. Calling adjoint_3d routine.'''
 		self._check_adjoint()
 		cnfft.nfft_adjoint_1d(&(self._c_nfft_plan))
-		self.fhat_set = 1
+		self._fhat_set = 1
 	
 	def trafo(self):
 		'''Do the nfft transform from f_hat to f.'''
 		self._check_trafo()
 		cnfft.nfft_trafo(&(self._c_nfft_plan))
-		self.f_set = 1
+		self._f_set = 1
 	
 	def trafo_1d(self):
 		'''Do the nfft transform from f_hat to f.'''
 		self._check_trafo()
 		cnfft.nfft_trafo_1d(&(self._c_nfft_plan))
-		self.f_set = 1
+		self._f_set = 1
 	
 	def trafo_2d(self):
 		'''Do the nfft transform from f_hat to f.'''
 		self._check_trafo()
 		cnfft.nfft_trafo_2d(&(self._c_nfft_plan))
-		self.f_set = 1
+		self._f_set = 1
 	
 	def trafo_3d(self):
 		'''Do the nfft transform from f_hat to f.'''
 		self._check_trafo()
 		cnfft.nfft_trafo_3d(&(self._c_nfft_plan))
-		self.f_set = 1
+		self._f_set = 1
 	
 	def check(self):
 		cnfft.nfft_check(&(self._c_nfft_plan))
 
 	def _check_adjoint(self):
-		if self.f_set == 0:
+		if self._f_set == 0:
 			raise RuntimeError('Attempted to call an adjoint routine without setting f')
 
 	def _check_trafo(self):
-		if self.fhat_set == 0:
+		if self._fhat_set == 0:
 			raise RuntimeError('Attempted to call a trafo routine without setting f_hat')
 
 	def finalize(self):
@@ -366,14 +461,14 @@ cdef class NFFT:
 
 		cnfft.nfft_finalize(&(self._c_nfft_plan))
 		self.init_type == 0
-		self.d = 0
-		self.f_set = 0
-		self.fhat_set = 0
-		self.x_set = 0
+		self._f_set = 0
+		self._fhat_set = 0
+		self._x_set = 0
 
 cdef class NNFFT:
 	cdef cnfft.nnfft_plan _c_nnfft_plan
-	cdef int d, init_type, f_set, fhat_set, x_set
+	cdef int d, init_type
+	cdef int f_set, fhat_set, x_set, v_set
 
 	def __init__(self):
 		'''Python initialization or something'''
@@ -385,8 +480,7 @@ cdef class NNFFT:
 	def __dealloc__(self):
 		'''We need to finalize the plan so that allocated memory is freed when this object is destroyed'''
 
-		if self.init_type > 0:
-			cnfft.nnfft_finalize(&(self._c_nnfft_plan))
+		self.finalize()
 		
 	@classmethod
 	def init(cls, int d, int N_total, int M_total, np.ndarray[DTYPEi_t,ndim=1] N):
@@ -449,39 +543,58 @@ cdef class NNFFT:
 
 	property x:
 		def __get__(self):
-			cdef np.ndarray[DTYPE_t] x_out
+			cdef np.ndarray x_out
 			if self.x_set > 0:
 				x_out = real_to_numpy(self._c_nnfft_plan.x,self.d*self.M_total)
-				x_out=  x_out.reshape((self.M_total,self.d))
+				x_out = x_out.reshape((self.M_total,self.d))
 				return x_out
 			else:
 				return 0
 
-		def __set__(self,np.ndarray[DTYPE_t] x_in):
-			'''Set the nodes'''
+		def __set__(self,np.ndarray x_in):
+			'''Set the nodes that are used for the real space values'''
 
 			#x should be a (npts,ndim) array since it should then be stored in memory in the same linearized order that 
-			#NFFT wants. It will be memcpy
+			#NFFT wants.
 			if self.init_type > 0:
+				if np.max(x_in) > 0.5 or np.min(x_in) < -0.5:
+					raise ValueError("x must be in the interval [-0.5,0.5]^d")
 				numpy_to_real(x_in,self._c_nnfft_plan.x,self.d*self.M_total) #have M_total samples with d values in each sample
+				self.x_set = 1
 			else:
 				raise RuntimeError("Trying to set the real space nodes before initializing NFFT plan")
 
 	property v:
 		def __get__(self):
-			cdef np.ndarray[DTYPE_t] v_out
+			cdef np.ndarray v_out
 			if self.v_set > 0:
 				v_out = real_to_numpy(self._c_nnfft_plan.v,self.d*self.N_total)
 				v_out = v_out.reshape((self.N_total,self.d))
 			else:
 				return 0
 
-		def __set__(self,np.ndarray[DTYPE_t] v_in):
+		def __set__(self,np.ndarray v_in):
+			'''Set the nodes that are used for the Fourier space values'''
 
 			if self.init_type > 0:
 				numpy_to_real(v_in,self._c_nnfft_plan.v,self.d*self.M_total) #have M_total samples with d values in each sample
+				self.v_set = 1
 			else:
 				raise RuntimeError("Trying to set the frequency space nodes before initializing NFFT plan")
+	
+	property N_total:
+		def __get__(self):
+			if self.init_type > 0:
+				return self._c_nfft_plan.N_total
+			else:
+				return 0
+
+	property M_total:
+		def __get__(self):
+			if self.init_type > 0:
+				return self._c_nfft_plan.M_total
+			else:
+				return 0
 
 	def adjoint(self):
 		self._check_adjoint()
@@ -514,3 +627,15 @@ cdef class NNFFT:
 
 	def precompute_phi_hut(self):
 		cnfft.nnfft_precompute_phi_hut(&(self._c_nnfft_plan))
+	
+	def _check_adjoint(self):
+		if self.f_set == 0:
+			raise RuntimeError('Attempted to call an adjoint routine without setting f')
+
+	def _check_trafo(self):
+		if self.fhat_set == 0:
+			raise RuntimeError('Attempted to call a trafo routine without setting f_hat')
+
+	def finalize(self):
+		if self.init_type > 0:
+			cnfft.nnfft_finalize(&(self._c_nnfft_plan))
