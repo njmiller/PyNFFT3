@@ -452,9 +452,15 @@ cdef class NFFT:
 		if self._f_set == 0:
 			raise RuntimeError('Attempted to call an adjoint routine without setting f')
 
+		if self._x_set == 0:
+			raise RuntimeError('Attempted to call an NFFT routine without setting the real space nodes')
+
 	def _check_trafo(self):
 		if self._fhat_set == 0:
 			raise RuntimeError('Attempted to call a trafo routine without setting f_hat')
+		
+		if self._x_set == 0:
+			raise RuntimeError('Attempted to call an NFFT routine without setting the real space nodes')
 
 	def finalize(self):
 		'''We need to finalize the plan so that allocated memory is freed when this object is destroyed'''
