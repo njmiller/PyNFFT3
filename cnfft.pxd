@@ -126,12 +126,11 @@ cdef extern from "nfft3.h":
 		double *x #nodes in time/spatial domain
 		int M_total #total number of samples
 		int N_total #total number of Fourier coefficients
-		fftw_complex *f #vector of samples, size is M_total float types
-		fftw_complex *f_hat #vector of Fourier coefficients, since is N_total float_types
-		#double complex *f #vector of samples, size is M_total float types
-		#double complex *f_hat #vector of Fourier coefficients, since is N_total float_types
+		double *f #vector of samples, size is M_total float types
+		double *f_hat #vector of Fourier coefficients, since is N_total float_types
 		int d #dimension, rank
 		int *N #cut-off frequencies (kernel)
+		unsigned nfct_flags
 
 	void nfct_init_1d(nfct_plan *ths_plan, int N0, int M_total)
 	void nfct_init_2d(nfct_plan *ths_plan, int N0, int N1, int M_total)
@@ -153,12 +152,13 @@ cdef extern from "nfft3.h":
 		double *x #nodes in time/spatial domain
 		int M_total #total number of samples
 		int N_total #total number of Fourier coefficients
-		fftw_complex *f #vector of samples, size is M_total float types
-		fftw_complex *f_hat #vector of Fourier coefficients, since is N_total float_types
+		double *f #vector of samples, size is M_total float types
+		double *f_hat #vector of Fourier coefficients, since is N_total float_types
 		#double complex *f #vector of samples, size is M_total float types
 		#double complex *f_hat #vector of Fourier coefficients, since is N_total float_types
 		int d #dimension, rank
 		int *N #cut-off frequencies (kernel)
+		unsigned nfst_flags
 
 	void nfst_init_1d(nfst_plan *ths_plan, int N0, int M_total)
 	void nfst_init_2d(nfst_plan *ths_plan, int N0, int N1, int M_total)
@@ -176,7 +176,7 @@ cdef extern from "nfft3.h":
 	double nfst_phi_hut(nfst_plan *ths_plan, int k, int d)
 	double nfst_phi(nfst_plan *ths_plan, double x, int d)
 	int nfst_fftw_2N(int n)
-	int nfst_fftw_2n_rev(int n)
+	int nfst_fftw_2N_rev(int n)
 
 	#NNFFT functions
 	ctypedef struct nnfft_plan:
