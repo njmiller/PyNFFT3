@@ -126,7 +126,7 @@ cdef np.ndarray[DTYPE_t] real_to_numpy(double *arr_in, int n_elem):
 
 cdef numpy_to_real(np.ndarray[DTYPE_t] arr_in, double *arr_out, int n_elem):
 	'''Copying a numpy array into a double array. Not returning array, but modifying input array
-	because space for the array is probably already allocated.'''
+	because space for the array is probably already allocated by initialization routine'''
 
 	memcpy(arr_out, arr_in.data, n_elem*SIZEOF_FLOAT)
 
@@ -715,7 +715,7 @@ cdef class NFCT:
 			#x should be a (npts,ndim) array since it should then be stored in memory in the same linearized order that NFFT wants.
 			if self._init_type > 0:
 				if np.max(x_in) > 0.5 or np.min(x_in) < -0.5:
-					raise ValueError("x must be in the interval [-0.5,0.5]^2")
+					raise ValueError("x must be in the interval [-0.5,0.5]")
 				numpy_to_real(x_in,self._c_nfct_plan.x,self.d*self.M_total) #have M_total samples with d values in each sample
 				self._x_set = 1
 			else:
