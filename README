@@ -1,3 +1,1 @@
-This is a Cython wrapper to the NFFT3 library providing Fourier transforms on 
-data that is not uniformly sampled.
-
+This is a Cython wrapper to the NFFT3 library providing Fourier transforms on data that is not uniformly sampled. This was written in 2012, so it may not work on the most recent version of NFFT3.
